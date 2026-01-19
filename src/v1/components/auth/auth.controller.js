@@ -21,11 +21,11 @@ export async function registerUser(req, res) {
 
 export async function loginUser(req, res) {
     const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required' });
+    }
     try {
         const user = await User.findOne({ email });
-        if (!user || user.password !== password) {
-            return res.status(401).json({ message: 'Invalid email or password' });
-        }
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid email or password' });
@@ -42,7 +42,7 @@ export async function loginUser(req, res) {
             sameSite: "Strict",
             maxAge: 15 * 24 * 60 * 60 * 1000,
         })
-        .json({accessToken, refreshToken, userWithoutPassword});
+        .json({accessToken, refreshToken, user: userWithoutPassword });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

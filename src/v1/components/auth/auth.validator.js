@@ -18,6 +18,10 @@ export const registerSchema = Joi.object({
       "string.pattern.base":
         "Password must contain uppercase, lowercase, and a number",
     }),
+    role: Joi.string()
+    .valid("user", "admin")
+    .optional()
+    .default("user"),
 });
 
 export const loginSchema = Joi.object({
