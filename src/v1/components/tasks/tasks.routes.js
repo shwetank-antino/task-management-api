@@ -1,6 +1,6 @@
 import express from 'express';
 import { createTask, getTaskById, getAllTasks, updateTask, deleteTask, getTaskStats } from './tasks.controller.js';
-import { createTaskSchema, updateTaskSchema} from "./task.validator.js";
+import { createTaskSchema, updateTaskSchema} from "./tasks.validator.js";
 import { authenticate } from '../../../middleware/auth-handler.js';
 import { validate } from '../../../middleware/validate.js';
 

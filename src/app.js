@@ -12,7 +12,7 @@ const app = express();
 app.use(express.json());
 
 //middlewares
-app.use(rateLimiter());
+app.use(rateLimiter);
 
 app.get("/", (req, res) => {
   res.send("Hello, World");
