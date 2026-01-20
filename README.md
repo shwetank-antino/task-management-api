@@ -72,9 +72,6 @@ MONGOURI=mongodb+srv://<username>:<password>@cluster.mongodb.net/task-management
 # JWT Configuration
 JWT_SECRET=your_very_secure_random_string_min_32_characters_here
 
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
 ```
 
 **⚠️ Security Notes:**
