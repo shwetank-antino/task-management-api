@@ -10,7 +10,9 @@ A robust REST API for managing tasks and users with role-based access control, b
 - [Installation](#installation)
 - [Environment Variables](#environment-variables)
 - [Running the Application](#running-the-application)
+- [Rate Limiting](#rate-limiting)
 - [API Documentation](#api-documentation)
+- [Swagger / API Documentation](#swagger--api-documentation)
 - [Project Structure](#project-structure)
 - [Error Handling](#error-handling)
 - [Security](#security)
@@ -88,13 +90,50 @@ JWT_SECRET=your_very_secure_random_string_min_32_characters_here
 npm run dev
 ```
 
+This command:
+1. Generates Swagger documentation from your routes (`swagger-output.json`)
+2. Starts the development server
+3. Server will be available at `http://localhost:3000`
+4. API documentation available at `http://localhost:3000/api-docs`
+
 ### Production
 
 ```bash
 npm start
 ```
 
-Server will start on `http://localhost:3000`
+This command:
+1. Generates Swagger documentation from your routes
+2. Starts the production server
+3. Server will be available at `http://localhost:3000` (or configured PORT)
+4. API documentation available at `http://localhost:3000/api-docs`
+
+**Note:** The Swagger documentation auto-generation (`swagger.js`) runs automatically before the server starts. Do not edit the generated `swagger-output.json` file manually.
+
+## Rate Limiting
+
+The API implements rate limiting to protect against abuse and brute force attacks.
+
+### Features
+
+- **Global Middleware:** Applied to all incoming requests
+- **Protection:** Prevents excessive requests from a single IP address
+- **Configurable:** Limits and windows can be adjusted in `src/middleware/rate-limiter.js`
+
+### Response When Limited
+
+When rate limit is exceeded, the API returns:
+
+```
+HTTP 429 Too Many Requests
+```
+
+### Recommendations
+
+- **Development:** Use lenient limits to avoid blocking during testing
+- **Production:** Configure stricter limits based on your expected traffic
+- **Monitoring:** Track 429 responses to identify potential attacks
+- **Configuration:** Adjust limits in environment-specific configurations
 
 ## API Documentation
 
@@ -144,6 +183,12 @@ Response: 200 OK
     "role": "user"
   }
 }
+
+**Token Expiration:**
+- **Access Token:** 7 minutes (for API requests)
+- **Refresh Token:** 15 days (for obtaining new access tokens)
+
+When your access token expires, use the refresh endpoint to get a new one without re-logging in.
 ```
 
 #### Refresh Token
@@ -290,6 +335,44 @@ Response: 200 OK
 }
 ```
 
+## Swagger / API Documentation
+
+Interactive API documentation is available using Swagger UI:
+
+### Accessing the Documentation
+
+```
+http://localhost:3000/api-docs
+```
+
+### Features
+
+- **Interactive Testing:** Try API endpoints directly from the browser
+- **Schema Documentation:** View request/response schemas for all endpoints
+- **Authentication:** Built-in Bearer token input for testing protected endpoints
+- **Auto-generated:** Documentation is automatically generated from route definitions
+
+### Using Swagger UI
+
+1. Navigate to `http://localhost:3000/api-docs` in your browser
+2. Click the **Authorize** button (lock icon) in the top right
+3. Enter your Bearer token in the format: `Bearer <your_access_token>`
+4. Click **Authorize** and then **Close**
+5. Expand any endpoint and click **Try it out** to test it
+6. Click **Execute** to send the request
+
+### Auto-generation Process
+
+The Swagger documentation is automatically generated before the server starts:
+
+```bash
+# The generation happens automatically when running:
+npm start      # Production mode
+npm run dev    # Development mode
+```
+
+The `swagger.js` file reads your route definitions and generates `swagger-output.json`. **Do not manually edit `swagger-output.json`** as it will be overwritten on the next server startup.
+
 ## Project Structure
 
 ```
@@ -353,18 +436,47 @@ task-management-api/
 - ✅ Rate limiting to prevent brute force attacks
 - ✅ Input validation with Joi schemas
 - ✅ Role-based access control (RBAC)
-- ✅ CORS and security headers ready for configuration
+- ✅ CORS configured for origin restriction
+- ✅ Security headers ready for configuration
+
+### CORS Configuration
+
+**Current Configuration:**
+
+| Setting | Value |
+|---------|-------|
+| **Allowed Origins** | `http://localhost:3000` |
+| **Allowed Methods** | GET, POST, PATCH, DELETE |
+| **Allowed Headers** | Content-Type, Authorization |
+| **Credentials** | Enabled (cookies included) |
+
+### Authentication Headers
+
+All protected API endpoints require the following header:
+
+```
+Authorization: Bearer <access_token>
+```
+
+Example:
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiI..." \
+  https://api.example.com/api/v1/tasks
+```
 
 ### Security Recommendations
 
-1. Always use HTTPS in production
-2. Implement CORS policies
-3. Enable security headers (Helmet.js)
-4. Regularly rotate JWT secrets
-5. Monitor rate limit thresholds
-6. Use strong passwords (enforced by validator)
-7. Implement request logging
-8. Keep dependencies updated
+1. **Always use HTTPS in production** - Update Swagger configuration and CORS origins
+2. **Implement CORS policies** - Whitelist only trusted domains
+3. **Enable security headers** - Consider using Helmet.js for additional protection
+4. **Regularly rotate JWT secrets** - Change `JWT_SECRET` periodically in production
+5. **Monitor rate limit thresholds** - Adjust limits based on traffic patterns
+6. **Use strong passwords** - Enforced by validator (minimum requirements apply)
+7. **Implement request logging** - Track all API calls for audit trails
+8. **Keep dependencies updated** - Regularly run `npm audit` and update packages
+9. **Restrict CORS origins** - Never use wildcard (`*`) in production
+10. **Secure refresh tokens** - Ensure HTTP-only cookie flags are set
+11. **Monitor API documentation access** - Swagger UI is publicly accessible at `/api-docs`
 
 ## Production Deployment
 
@@ -388,6 +500,49 @@ JWT_SECRET=<strong-production-secret>
 - [ ] Error logging implemented
 - [ ] Database backups scheduled
 - [ ] Monitoring & alerting set up
+
+### CORS Configuration for Production
+
+Update `src/app.js` to configure CORS for your production domain:
+
+```javascript
+app.use(
+  cors({
+    origin: [
+      'https://yourdomain.com',
+      'https://www.yourdomain.com',
+    ],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  })
+)
+```
+
+**Important:** Replace with your actual production domain(s). Do not allow unrestricted origins (`*`) in production.
+
+### Swagger Configuration for Production
+
+Update `swagger.js` to use HTTPS scheme and your production domain:
+
+```javascript
+const doc = {
+  info: {
+    title: "Task Management API",
+    description: "API documentation for Task Management system",
+  },
+  host: "yourdomain.com",        // Change to production domain
+  schemes: ["https"],             // Change from http to https
+  basePath: "/api/v1",           // Optional: update base path
+  // ... rest of configuration
+};
+```
+
+Then regenerate documentation by running:
+
+```bash
+npm start
+```
 
 ### Deploy Commands
 
